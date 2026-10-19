@@ -75,10 +75,12 @@ def tf_idf(X_train,X_test):
     X_test_tfidf = vectorizer.transform(X_test)
     return X_train_tfidf,X_test_tfidf
 
-# rename once we figure out what the third word analysis type we're doing is
-def third_parsing_version(): 
+# Lemmatization converts words into their base form (e.g. running and ran both become run)
+# This will test to see if TF IDF or Bag Of Words affectiveness are impacted by lemmatization
+def lemmatization(X_train, x_test): 
     print("Placeholder")
 
+# models trained on four variants: tf idf w/ and w/o lemmatization, bag of words w/ and w/o lemmatization
 def main():
     X_train,X_test,y_train,y_test = preprocessing()
     X_train_tfidf,X_test_tfidf = tf_idf(X_train,X_test)
