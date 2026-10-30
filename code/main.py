@@ -1,18 +1,22 @@
 # this is the example download for the dataset I haven't set up a Kaggle account yet
 # So this is a work in progress
-import kagglehub
-from kagglehub import KaggleDatasetAdapter
+# kagglehub is only needed to re-download/re-sample the raw dataset (see below);
+# the sampled csv is already in data/, so it's not imported on every run
+# import kagglehub
+# from kagglehub import KaggleDatasetAdapter
 import pandas as pd
 from pathlib import Path
 import random
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
+from sklearn.dummy import DummyClassifier
+from evaluation import compare_methods
 from sklearn.metrics import accuracy_score
 from sklearn.feature_extraction.text import TfidfVectorizer,ENGLISH_STOP_WORDS,CountVectorizer
 # # Download latest version
-path = Path(kagglehub.dataset_download("andrewmvd/steam-reviews"))
+# path = Path(kagglehub.dataset_download("andrewmvd/steam-reviews"))
 
-print(path)
+# print(path)
 
 #----------------------------------------
 # # Sample the original dataset
@@ -37,7 +41,8 @@ finalStopwords = list(totalStopwords - negativeStopwords)
 
 
 def preprocessing():
-    df = pd.read_csv("../data/steam_reviews_sampled.csv")
+    sampled_data_path = Path(__file__).resolve().parent.parent / "data" / "steam_reviews_sampled.csv"
+    df = pd.read_csv(sampled_data_path)
     # clean the dataset
     df = df.drop(columns=['app_id']).drop_duplicates().dropna()
 
@@ -81,11 +86,23 @@ def third_parsing_version():
 
 def main():
     X_train,X_test,y_train,y_test = preprocessing()
-    X_train_tfidf,X_test_tfidf = tf_idf(X_train,X_test)
-    X_train_bow,X_test_bow = bag_of_words(X_train,X_test)
-    
-    # TODO: train the model for each vectorization method and compare the results
-    
+
+    # same classifier for every method, so score differences come from the text representation only.
+    # class_weight="balanced" because only ~18% of reviews are negative: unweighted, the model rarely
+    # predicts "negative" at the default 0.5 cutoff and the threshold-based metrics (macro F1,
+    # negative recall) end up measuring that cutoff rather than how good the representation is
+    model = LogisticRegression(max_iter=1000, class_weight="balanced")
+    # (name, vectorizer function, classifier, train texts, test texts) -- the vectorizer functions are
+    # passed in (not their output) because cross-validation has to re-fit the vocabulary/idf on each
+    # training fold. the majority baseline always predicts "positive": the floor every method has to beat
+    # TODO: add the lemmatized variants here, e.g. ("tf-idf + lemmatization", tf_idf, model, x_train_lem, x_test_lem)
+    methods = [
+        ("majority baseline", bag_of_words, DummyClassifier(strategy="most_frequent"), X_train, X_test),
+        ("bag of words", bag_of_words, model, X_train, X_test),
+        ("tf-idf", tf_idf, model, X_train, X_test),
+    ]
+    compare_methods(methods, y_train, y_test)
+
 
 if __name__ == '__main__':
     main()
