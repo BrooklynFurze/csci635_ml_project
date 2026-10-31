@@ -144,10 +144,6 @@ def main():
     print("Beginning lemmatization (takes a moment):")
     x_train_lem, x_test_lem = lemmatization(X_train, X_test)
 
-    #without lemmatization
-    X_train_tfidf,X_test_tfidf = tf_idf(X_train,X_test)
-    X_train_bow,X_test_bow = bag_of_words(X_train,X_test)
-
     #with lemmatization
     #lemmatization needs to happen before tfidf/bow as it changes the underlying data that gets fed into them
     x_train_tfidf_lem, x_test_tfidf_lem = tf_idf(x_train_lem, x_test_lem)
@@ -164,8 +160,8 @@ def main():
     # TODO: add the lemmatized variants here, e.g. ("tf-idf + lemmatization", tf_idf, model, x_train_lem, x_test_lem)
     methods = [
         ("majority baseline", bag_of_words, DummyClassifier(strategy="most_frequent"), X_train, X_test),
-        ("bag of words", bag_of_words, model, X_train, X_test),
-        ("tf-idf", tf_idf, model, X_train, X_test),
+        ("bag of words", bag_of_words, model, X_train, X_test), #no lemmatization
+        ("tf-idf", tf_idf, model, X_train, X_test), #no lemmatization
     ]
     compare_methods(methods, y_train, y_test)
 
