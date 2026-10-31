@@ -13,6 +13,15 @@ from sklearn.dummy import DummyClassifier
 from evaluation import compare_methods
 from sklearn.metrics import accuracy_score
 from sklearn.feature_extraction.text import TfidfVectorizer,ENGLISH_STOP_WORDS,CountVectorizer
+
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+nltk.download('punkt_tab')      
+nltk.download('wordnet')    
+nltk.download('omw-1.4') 
+nltk.download('averaged_perceptron_tagger_eng') 
+
 # # Download latest version
 # path = Path(kagglehub.dataset_download("andrewmvd/steam-reviews"))
 
@@ -80,13 +89,66 @@ def tf_idf(X_train,X_test):
     X_test_tfidf = vectorizer.transform(X_test)
     return X_train_tfidf,X_test_tfidf
 
-# rename once we figure out what the third word analysis type we're doing is
-def third_parsing_version(): 
-    print("Placeholder")
+# Lemmatization converts words into their base form (e.g. running and ran both become run, dogs becomes dog, etc)
+# This will test to see if TF IDF or Bag Of Words affectiveness are impacted by lemmatization
+def lemmatization(X_train, x_test): 
+    X_train_copy = X_train.copy()
+    x_test_copy = x_test.copy()
 
+    lemmatizer = WordNetLemmatizer()
+    
+    for i, text in enumerate(X_train_copy):
+        tokens = word_tokenize(text)
+        tagged_words = nltk.pos_tag(tokens)
+        lemmatized_words = [
+            lemmatizer.lemmatize(word, get_wordnet_pos(tag))
+            for word, tag in tagged_words
+        ]
+        X_train_copy.iloc[i] = " ".join(lemmatized_words)
+
+    for i, text in enumerate(x_test_copy):
+        tokens = word_tokenize(text)
+        tagged_words = nltk.pos_tag(tokens)
+
+        lemmatized_words = [
+            lemmatizer.lemmatize(word, get_wordnet_pos(tag))
+            for word, tag in tagged_words
+        ]
+
+        x_test_copy.iloc[i] = " ".join(lemmatized_words)
+
+    # to see a sample of how the data looks after lemmatization
+    # for text in X_train_copy.head():
+    #     print(text)
+    #     print()
+
+    return X_train_copy, x_test_copy
+
+#helper function to deal with determining the parts of speech for lemmatization
+#lets it actually do other parts of speech beyond nouns
+def get_wordnet_pos(tag):
+    if tag.startswith('J'):
+        return 'a'  # Adjective
+    elif tag.startswith('V'):
+        return 'v'  # Verb
+    elif tag.startswith('N'):
+        return 'n'  # Noun
+    elif tag.startswith('R'):
+        return 'r'  # Adverb
+    return 'n'      # Default to noun
+
+# models trained on four variants: tf idf w/ and w/o lemmatization, bag of words w/ and w/o lemmatization
 def main():
     X_train,X_test,y_train,y_test = preprocessing()
 
+    print("Beginning lemmatization (takes a moment):")
+    x_train_lem, x_test_lem = lemmatization(X_train, X_test)
+
+    #with lemmatization
+    #lemmatization needs to happen before tfidf/bow as it changes the underlying data that gets fed into them
+    x_train_tfidf_lem, x_test_tfidf_lem = tf_idf(x_train_lem, x_test_lem)
+    x_train_bow_lem, x_test_bow_lem = bag_of_words(x_train_lem, x_test_lem)
+    
     # same classifier for every method, so score differences come from the text representation only.
     # class_weight="balanced" because only ~18% of reviews are negative: unweighted, the model rarely
     # predicts "negative" at the default 0.5 cutoff and the threshold-based metrics (macro F1,
@@ -98,8 +160,8 @@ def main():
     # TODO: add the lemmatized variants here, e.g. ("tf-idf + lemmatization", tf_idf, model, x_train_lem, x_test_lem)
     methods = [
         ("majority baseline", bag_of_words, DummyClassifier(strategy="most_frequent"), X_train, X_test),
-        ("bag of words", bag_of_words, model, X_train, X_test),
-        ("tf-idf", tf_idf, model, X_train, X_test),
+        ("bag of words", bag_of_words, model, X_train, X_test), #no lemmatization
+        ("tf-idf", tf_idf, model, X_train, X_test), #no lemmatization
     ]
     compare_methods(methods, y_train, y_test)
 
