@@ -7,3 +7,8 @@ The goal of this project is to compare different techniques of tokenization when
 Overall, this project will seek to determine which tokenization values work best for short texts, and to compare simple methods against more advanced ones.
 
 # How to run:
+1. pip install -r requirements.txt
+
+2. Run the main.py
+
+3. View terminal output

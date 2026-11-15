@@ -1,17 +1,9 @@
-# this is the example download for the dataset I haven't set up a Kaggle account yet
-# So this is a work in progress
-# kagglehub is only needed to re-download/re-sample the raw dataset (see below);
-# the sampled csv is already in data/, so it's not imported on every run
-# import kagglehub
-# from kagglehub import KaggleDatasetAdapter
 import pandas as pd
 from pathlib import Path
-import random
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.dummy import DummyClassifier
 from evaluation import compare_methods
-from sklearn.metrics import accuracy_score
 from sklearn.feature_extraction.text import TfidfVectorizer,ENGLISH_STOP_WORDS,CountVectorizer
 
 import nltk
@@ -22,25 +14,6 @@ nltk.download('wordnet')
 nltk.download('omw-1.4') 
 nltk.download('averaged_perceptron_tagger_eng') 
 
-# # Download latest version
-# path = Path(kagglehub.dataset_download("andrewmvd/steam-reviews"))
-
-# print(path)
-
-#----------------------------------------
-# # Sample the original dataset
-# inputPath = path / "dataset.csv"
-# outputPath = Path(__file__).resolve().parent.parent / "data" / "steam_reviews_sampled.csv"
-
-# df = pd.read_csv(inputPath)
-# print(df.head())
-
-# n = sum(1 for line in open(inputPath,encoding="utf-8")) - 1
-# sampleSize = 50000 # 50000 for now, adjust later if needed
-# skip = sorted(random.sample(range(1,n+1),n-sampleSize))
-# df = pd.read_csv(inputPath,skiprows=skip,encoding="utf-8")
-# df.to_csv(outputPath,index=False)
-#------------------------------------------
 
 df = pd.DataFrame()
 totalStopwords = set(ENGLISH_STOP_WORDS)
@@ -55,10 +28,10 @@ def preprocessing():
     # clean the dataset
     df = df.drop(columns=['app_id']).drop_duplicates().dropna()
 
-    print(df.info())
-    print(df.isnull().sum())
-    print(df["review_score"].value_counts(dropna=False))
-    print(df["review_text"].head(10))
+    # print(df.info())
+    # print(df.isnull().sum())
+    # print(df["review_score"].value_counts(dropna=False))
+    # print(df["review_text"].head(10))
     
     # split the train and test sets
     X = df["review_text"] # not sure if we should include app names and review votes
@@ -143,11 +116,6 @@ def main():
 
     print("Beginning lemmatization (takes a moment):")
     x_train_lem, x_test_lem = lemmatization(X_train, X_test)
-
-    #with lemmatization
-    #lemmatization needs to happen before tfidf/bow as it changes the underlying data that gets fed into them
-    x_train_tfidf_lem, x_test_tfidf_lem = tf_idf(x_train_lem, x_test_lem)
-    x_train_bow_lem, x_test_bow_lem = bag_of_words(x_train_lem, x_test_lem)
     
     # same classifier for every method, so score differences come from the text representation only.
     # class_weight="balanced" because only ~18% of reviews are negative: unweighted, the model rarely
@@ -162,6 +130,8 @@ def main():
         ("majority baseline", bag_of_words, DummyClassifier(strategy="most_frequent"), X_train, X_test),
         ("bag of words", bag_of_words, model, X_train, X_test), #no lemmatization
         ("tf-idf", tf_idf, model, X_train, X_test), #no lemmatization
+        ("lemmatized bag of words", bag_of_words, model, x_train_lem, x_test_lem), # lemmatization
+        ("lemmatized tf idf", tf_idf, model, x_train_lem, x_test_lem) # lemmatization
     ]
     compare_methods(methods, y_train, y_test)
 
